@@ -1,4 +1,56 @@
+use crate::tensor::tensor::Tensor;
 
+pub struct LayerNorm {
+    pub gamma: Tensor,
+    pub beta: Tensor,
+}
+
+impl LayerNorm {
+
+    pub fn new(dim: usize) -> Self {
+
+        Self {
+            gamma: Tensor::random(1, dim),
+            beta: Tensor::zeros(1, dim),
+        }
+
+    }
+
+    pub fn forward(&self, x: &Tensor) -> Tensor {
+
+        let mut out = x.clone();
+
+        for r in 0..x.rows {
+
+            let start = r * x.cols;
+            let end = start + x.cols;
+
+            let row = &x.data[start..end];
+
+            let mean = row.iter().sum::<f32>() / x.cols as f32;
+
+            let var = row.iter()
+                .map(|v| (v-mean)*(v-mean))
+                .sum::<f32>() / x.cols as f32;
+
+            let std = (var + 1e-5).sqrt();
+
+            for c in 0..x.cols {
+
+                let idx = start + c;
+
+                out.data[idx] =
+                    (x.data[idx] - mean) / std
+                    * self.gamma.data[c]
+                    + self.beta.data[c];
+            }
+
+        }
+
+        out
+    }
+}
+/* 
 use crate::tensor::tensor::Tensor;
 
 pub struct LayerNorm {
@@ -59,4 +111,6 @@ impl LayerNorm {
 }
 
 }
+
+*/
                 

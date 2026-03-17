@@ -1,3 +1,34 @@
+use crate::tensor::tensor::{Tensor, matmul, gelu};
+
+pub struct FeedForward {
+
+    pub w1: Tensor,
+    pub w2: Tensor,
+
+}
+
+impl FeedForward {
+
+    pub fn new(d: usize, hidden: usize) -> Self {
+
+        Self {
+            w1: Tensor::random(d, hidden),
+            w2: Tensor::random(hidden, d),
+        }
+
+    }
+
+    pub fn forward(&self, x: &Tensor) -> Tensor {
+
+        let mut h = matmul(x, &self.w1);
+
+        gelu(&mut h);
+
+        matmul(&h, &self.w2)
+    }
+}
+
+/* 
 use crate::tensor::tensor::*;
 
 pub struct FeedForward {
@@ -33,3 +64,5 @@ impl FeedForward {
         Tensor::matmul(&out, &self.w2)
     }
 }
+
+*/

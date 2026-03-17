@@ -1,68 +1,85 @@
+// src/inference/generate.rs
 use crate::gpt::model::GPT;
-use crate::inference::sampling::top_k_sample;
-use crate::tensor::tensor::softmax;
+use crate::tensor::softmax::softmax;
 
+use crate::inference::sample::sample;
+use crate::inference::topk::top_k; 
 
-pub fn generate(
-    model: &GPT,
-    mut tokens: Vec<usize>,
-    steps: usize,
-    temperature: f32,
-    top_k: usize
-) -> Vec<usize> {
+/// simple generate: tokens をインプレースで伸ばす
+/// temperature: 例 0.7, top_k: 例 40 (0なら top_k 無し)
+pub fn generate(model: & GPT, tokens: &mut Vec<usize>, max_new_tokens: usize, temperature: f32, top_k_val: usize) {
+    for _step in 0..max_new_tokens {
+        let logits = model.forward(&tokens); // Tensor rows = seq, cols = vocab
 
-    for _ in 0..steps {
-
-        let logits = model.forward(&tokens);
-
-        let last = logits.rows - 1;
-
-        let start = last * logits.cols;
-
-        let mut row = logits.data[start..start+logits.cols].to_vec();
-
-        for v in &mut row {
-            *v /= temperature;
+        if logits.rows == 0 || logits.cols == 0 {
+        
+            eprintln!("generate: logits empty");
+            break;
         }
 
-        let probs = softmax(&row);
+      
+        let start = (logits.rows - 1) * logits.cols;
+        let last_row = &logits.data[start..start + logits.cols];
 
-        let next = top_k_sample(&probs, top_k);
+        // copy to Vec<f32> so we can modify (temperature, top_k)
+        let mut probs_vec: Vec<f32> = last_row.to_vec();
 
-        tokens.push(next);
+       
+        if top_k_val > 0 {
+            top_k(&mut probs_vec, top_k_val);
+        }
 
-    }
-
-    tokens
-}
-
-/*   
-
-use crate::tensor::tensor::Tensor;
-use crate::inference::sample::sample;
-
-pub fn generate(model: &GPT, mut tokens: Vec<usize>, steps: usize) -> Vec<usize> {
-
-    for _ in 0..steps {
-
-        let logits = model.forward(&tokens);
-
-        let last_row = logits.rows - 1;
-
-        let start = last_row * logits.cols;
-        let end = start + logits.cols;
-
-        let probs = Tensor {
-            data: logits.data[start..end].to_vec(),
-            rows: 1,
-            cols: logits.cols
-        };
+        let probs = softmax(&probs_vec);
 
         let next = sample(&probs);
-
         tokens.push(next);
     }
-
-    tokens
 }
+
+
+/* 
+
+use crate::gpt::model::GPT;
+use crate::tensor::tensor::Tensor;
+
+pub fn generate(
+    model: &mut GPT,
+    tokens: &mut Vec<usize>,
+    max_new_tokens: usize,
+) {
+
+    for _ in 0..max_new_tokens {
+
+        // 入力
+let logits = model.forward(&tokens);
+
+        let next = argmax(&logits);
+
+        tokens.push(next);
+
+    }
+
+}
+
+fn argmax(t: &Tensor) -> usize {
+
+    let mut max_i = 0;
+    let mut max_v = t.data[0];
+
+    for (i, v) in t.data.iter().enumerate() {
+
+        if *v > max_v {
+
+            max_v = *v;
+            max_i = i;
+
+        }
+
+    }
+
+    max_i
+}
+
+
+
 */

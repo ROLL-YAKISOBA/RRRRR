@@ -1,9 +1,10 @@
 use crate::tensor::tensor::Tensor;
-use crate::transformer::attention::SelfAttention;
+//use crate::transformer::attention::SelfAttention;
+use crate::transformer::attention::Attention;
 
 pub struct MultiHeadAttention {
 
-    heads: Vec<SelfAttention>,
+    heads: Vec<Attention>,
     wo: Tensor,
 
 }
@@ -15,7 +16,7 @@ impl MultiHeadAttention {
         let mut heads = Vec::new();
 
         for _ in 0..n_heads {
-            heads.push(SelfAttention::new(dim));
+            heads.push(Attention::new(dim));
         }
 
         Self {

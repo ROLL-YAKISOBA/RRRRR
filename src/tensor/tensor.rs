@@ -4,6 +4,7 @@ pub struct Tensor {
     pub data: Vec<f32>,
     pub rows: usize,
     pub cols: usize,
+    pub grad: Vec<f32>,
 }
 
 pub fn softmax(v: &[f32]) -> Vec<f32> {
@@ -54,11 +55,32 @@ impl Tensor {
 
         Self {
             data: vec![0.0; rows * cols],
+            grad: vec![0.0; rows*cols],
             rows,
             cols,
         }
 
     }
+
+
+    pub fn from_tokens(tokens: Vec<usize>) -> Tensor {
+
+    let rows = 1;
+    let cols = tokens.len();
+
+    let data: Vec<f32> = tokens
+        .iter()
+        .map(|t| *t as f32)
+        .collect();
+
+    Tensor {
+        rows,
+        cols,
+        data,
+        grad: vec![0.0; rows*cols]
+    }
+
+}
 
     
     pub fn matmul(a: &Tensor, b: &Tensor) -> Tensor {
@@ -102,7 +124,7 @@ impl Tensor {
         data[i] = rng.gen::<f32>() * 0.02 - 0.01;
     }
 
-    Self { rows, cols, data }
+    Self { rows, cols, data,grad: vec![0.0; rows*cols], }
    }
 
 
@@ -111,7 +133,8 @@ pub fn zeros(rows: usize, cols: usize) -> Self {
     Self {
         rows,
         cols,
-        data: vec![0.0; rows * cols]
+        data: vec![0.0; rows * cols],
+        grad: vec![0.0; rows*cols]
     }
 
 }
@@ -129,6 +152,7 @@ pub fn zeros(rows: usize, cols: usize) -> Self {
         data,
         rows: a.rows,
         cols: a.cols,
+        grad: vec![0.0; a.rows * a.cols]
     }
 
 }
@@ -214,63 +238,34 @@ pub fn apply_temperature(logits: &mut Vec<f32>, temperature: f32) {
 }
 
 
-pub fn softmax(x: & Vec<f32>) ->  Vec<f32> {
+pub fn transpose(x: &Tensor) -> Tensor {
 
-    let mut max = f32::MIN;
+    let mut out = Tensor::new(x.cols, x.rows);
 
-    for v in x {
-        if *v > max {
-            max = *v;
+    for r in 0..x.rows {
+        for c in 0..x.cols {
+            out.data[c*out.cols + r] = x.data[r*x.cols + c];
         }
     }
 
-    let mut exps = Vec::with_capacity(x.len());
-    let mut sum = 0.0;
-
-    for v in x {
-        let e = (*v - max).exp();
-        exps.push(e);
-        sum += e;
-    }
-
-    for v in &mut exps {
-        *v /= sum;
-    }
-
-    exps
+    out
 }
+
+   
+pub fn last_row(&self) -> Vec<f32> {
+
+    let start = (self.rows - 1) * self.cols;
+
+    self.data[start..start+self.cols].to_vec()
 
 }
 
-/* 
-pub fn softmax(x: &Vec<f32>) -> Vec<f32> {
 
-    let mut max = f32::MIN;
 
-    for v in x {
-        if *v > max {
-            max = *v;
-        }
-    }
-
-    let mut exps = Vec::with_capacity(x.len());
-    let mut sum = 0.0;
-
-    for v in x {
-        let e = (*v - max).exp();
-        exps.push(e);
-        sum += e;
-    }
-
-    for v in &mut exps {
-        *v /= sum;
-    }
-
-    exps
 }
-*/
 
-pub fn relu(x: &mut Tensor) {
+
+    pub fn relu(x: &mut Tensor) {
 
     for v in &mut x.data {
 
@@ -282,6 +277,17 @@ pub fn relu(x: &mut Tensor) {
 
 }
 
+pub fn gelu(x: &mut Tensor) {
+
+    for v in &mut x.data {
+
+        let y = *v;
+
+        *v = 0.5 * y * (1.0 + (0.79788456 * (y + 0.044715 * y.powi(3))).tanh());
+
+    }
+
+}
 
 pub fn matmul(a: &Tensor, b: &Tensor) -> Tensor {
 
@@ -363,30 +369,5 @@ pub fn matmul(
         }
     }
 }
-    
-
-
-
-/* 
-  */
-  
-
-
-
-pub fn add(a: &Tensor, b: &Tensor) -> Tensor {
-
-    let mut data = vec![0.0; a.rows * a.cols];
-
-    for i in 0..data.len() {
-        data[i] = a.data[i] + b.data[i];
-    }
-
-    Tensor {
-        data,
-        rows: a.rows,
-        cols: a.cols,
-    }
-
-}
-
+ 
 

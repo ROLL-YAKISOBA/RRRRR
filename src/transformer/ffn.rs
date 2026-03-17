@@ -1,4 +1,5 @@
 use crate::tensor::tensor::Tensor;
+use crate::tensor::tensor::relu;
 
 pub struct FeedForward {
 
@@ -21,7 +22,7 @@ impl FeedForward {
     pub fn forward(&self, x: &Tensor) -> Tensor {
 
         let h = Tensor::matmul(x, &self.w1);
-        let h = Tensor::relu(&h);
+        let h = relu(&h);
 
         Tensor::matmul(&h, &self.w2)
 
