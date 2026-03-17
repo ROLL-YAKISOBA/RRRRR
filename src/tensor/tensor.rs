@@ -6,7 +6,7 @@ pub struct Tensor {
     pub cols: usize,
 }
 
-pub fn softmax(v: &Vec<f32>) -> Vec<f32> {
+pub fn softmax(v: &[f32]) -> Vec<f32> {
 
     let mut out = vec![0.0; v.len()];
 

@@ -1,7 +1,11 @@
-
 use crate::tensor::tensor::Tensor;
+use crate::tensor::tensor::softmax;
 
-pub fn cross_entropy(logits: &Tensor, targets: &Vec<usize>) -> f32 {
+
+pub fn cross_entropy_loss(
+    logits: &Tensor,
+    targets: &[usize],
+) -> f32 {
 
     let mut loss = 0.0;
 
@@ -12,22 +16,11 @@ pub fn cross_entropy(logits: &Tensor, targets: &Vec<usize>) -> f32 {
 
         let row = &logits.data[start..end];
 
-        let mut max = f32::NEG_INFINITY;
-        for v in row {
-            if *v > max {
-                max = *v;
-            }
-        }
+        let probs = softmax(row);
 
-        let mut sum = 0.0;
+        let target = targets[i];
 
-        for v in row {
-            sum += (*v - max).exp();
-        }
-
-        let log_prob = (row[targets[i]] - max).exp() / sum;
-
-        loss -= log_prob.ln();
+        loss -= probs[target].ln();
     }
 
     loss / targets.len() as f32

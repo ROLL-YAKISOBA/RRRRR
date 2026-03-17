@@ -1,5 +1,7 @@
 use crate::gpt::model::GPT;
-use crate::training::loss::cross_entropy;
+use crate::training::loss::cross_entropy_loss;
+
+
 
 pub fn train(model: &mut GPT, data: &Vec<usize>, epochs: usize) {
 
@@ -7,7 +9,7 @@ pub fn train(model: &mut GPT, data: &Vec<usize>, epochs: usize) {
 
         let logits = model.forward(data);
 
-        let loss = cross_entropy(&logits, data);
+        let loss = cross_entropy_loss(&logits, data);
 
         println!("epoch {} loss {}", e, loss);
 

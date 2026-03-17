@@ -1,5 +1,29 @@
-use crate::tensor::tensor::Tensor;
+//use crate::tensor::tensor::Tensor;
 
+pub fn softmax(x: &[f32]) -> Vec<f32>  {
+
+    let max = x.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
+
+    let mut exp_sum = 0.0;
+    let mut exps = Vec::new();
+
+    for v in x {
+
+        let e = (v - max).exp();
+
+        exp_sum += e;
+
+        exps.push(e);
+    }
+
+    for v in &mut exps {
+        *v /= exp_sum;
+    }
+
+    exps
+}
+
+/* 
 pub fn softmax(t: &Tensor) -> Tensor {
 
     let mut out = t.data.clone();
@@ -31,3 +55,4 @@ pub fn softmax(t: &Tensor) -> Tensor {
         cols: t.cols
     }
 }
+*/
