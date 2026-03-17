@@ -1,0 +1,81 @@
+use crate::nn::embedding::Embedding;
+use crate::transformer::block::TransformerBlock;
+use crate::nn::output::OutputLayer;
+use crate::tensor::tensor::Tensor;
+use crate::nn::position::positional_encoding;
+
+pub struct GPT {
+
+    pub embedding: Embedding,
+    pub blocks: Vec<TransformerBlock>,
+    pub output: OutputLayer,
+
+    pub vocab: usize,
+    pub dim: usize,
+
+}
+
+impl GPT {
+
+    pub fn new(vocab: usize, n_layer: usize, dim: usize) -> Self {
+
+        let embedding = Embedding::new(vocab, dim);
+
+        let mut blocks = Vec::with_capacity(n_layer);
+
+        for _ in 0..n_layer {
+            blocks.push(TransformerBlock::new(dim));
+        }
+
+        let output = OutputLayer::new(dim, vocab);
+
+        GPT {
+            embedding,
+            blocks,
+            output,
+            vocab,
+            dim,
+        }
+    }
+
+    pub fn forward(&self, tokens: &Vec<usize>) -> Tensor {
+
+        let mut x = self.embedding.forward(tokens);
+
+  let pos = positional_encoding(tokens.len(), x.cols);
+
+ 
+   x = Tensor::add(&x, &pos);
+
+        // Transformer blocks
+        for block in &self.blocks {
+            x = block.forward(&x);
+        }
+
+        let seq_len = x.rows;
+        let dim = x.cols;
+
+        let mut out_data = vec![0.0; seq_len * self.vocab];
+
+        for i in 0..seq_len {
+
+            let start = i * dim;
+            let end = start + dim;
+
+            let row = &x.data[start..end];
+
+            let logits = self.output.forward(&row.to_vec());
+
+            for v in 0..self.vocab {
+                out_data[i * self.vocab + v] = logits[v];
+            }
+
+        }
+
+        Tensor {
+            data: out_data,
+            rows: seq_len,
+            cols: self.vocab,
+        }
+    }
+}
