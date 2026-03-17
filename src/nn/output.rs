@@ -26,7 +26,7 @@ impl OutputLayer {
 
 impl OutputLayer {
 
-    pub fn forward(&self, x: &Vec<f32>) -> Vec<f32> {
+   pub fn forward(&self, x: &[f32]) -> Vec<f32> {
 
         let mut logits = vec![0.0; self.vocab];
 

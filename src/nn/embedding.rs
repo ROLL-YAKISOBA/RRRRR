@@ -31,7 +31,7 @@ impl Embedding {
         }*/
     }
 
-pub fn forward(&self, tokens: &Vec<usize>) -> Tensor {
+pub fn forward(&self, tokens: &[usize]) -> Tensor {
 
     let dim = self.weight.cols;
     let mut out = vec![];

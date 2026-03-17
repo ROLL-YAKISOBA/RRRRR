@@ -38,16 +38,14 @@ impl GPT {
         }
     }
 
-    pub fn forward(&self, tokens: &Vec<usize>) -> Tensor {
+    pub fn forward(&self, tokens: &[usize]) -> Tensor {
 
         let mut x = self.embedding.forward(tokens);
 
-  let pos = positional_encoding(tokens.len(), x.cols);
+        let pos = positional_encoding(tokens.len(), self.dim);
 
- 
-   x = Tensor::add(&x, &pos);
+        x = Tensor::add(&x, &pos);
 
-        // Transformer blocks
         for block in &self.blocks {
             x = block.forward(&x);
         }
@@ -64,7 +62,7 @@ impl GPT {
 
             let row = &x.data[start..end];
 
-            let logits = self.output.forward(&row.to_vec());
+            let logits = self.output.forward(row);
 
             for v in 0..self.vocab {
                 out_data[i * self.vocab + v] = logits[v];

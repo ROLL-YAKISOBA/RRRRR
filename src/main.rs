@@ -4,33 +4,26 @@ mod nn;
 mod transformer;
 mod gpt;
 mod inference;
+mod training;
 
 use crate::gpt::model::GPT;
 use crate::inference::generate::generate;
 use crate::tokenizer::simple::SimpleTokenizer;
 
+use crate::training::train::train;
+
 fn main() {
 
     let vocab = vec![
-        "hello",
-        "world",
-        "rust",
-        "gpt",
-        "ai",
-        "is",
-        "cool",
-        "!"
+        "hello","world","rust","gpt","ai","is","cool","!"
     ];
 
     let tokenizer = SimpleTokenizer::new(vocab);
 
-    let model = GPT::new(8, 2, 32);
+    let mut model = GPT::new(8,2,32);
 
-    let tokens = tokenizer.encode("hello");
+    let tokens = tokenizer.encode("hello world hello world");
 
-    let output = generate(&model, tokens, 10);
+    train(&mut model,&tokens,10);
 
-    let text = tokenizer.decode(&output);
-
-    println!("{}", text);
 }
