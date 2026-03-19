@@ -1,74 +1,48 @@
+use crate::tensor::tensor::{Tensor, matmul, softmax_row};
 use crate::transformer::mask::causal_mask;
-use crate::nn::linear::Linear;
-use crate::tensor::tensor::Tensor;
 
-use crate::tensor::softmax::softmax;
-//pub struct Attention
-pub struct SelfAttention {
-
-    wq: Linear,
-    wk: Linear,
-    wv: Linear
-
+/// 単一ヘッドの Self-Attention
+/// head_dim = dim / n_heads として使う
+pub struct Attention {
+    pub wq: Tensor,
+    pub wk: Tensor,
+    pub wv: Tensor,
+    pub head_dim: usize,
 }
 
-impl SelfAttention {
-
-    pub fn new(dim: usize) -> Self {
-
+impl Attention {
+    pub fn new(dim: usize, head_dim: usize) -> Self {
         Self {
-
-            wq: Linear::new(dim, dim),
-            wk: Linear::new(dim, dim),
-            wv: Linear::new(dim, dim)
-
-        }
-
-    }
-
-pub fn forward(&self, x: &Tensor) -> Tensor {
-
-    let q = self.wq.forward(x);
-    let k = self.wk.forward(x);
-    let v = self.wv.forward(x);
-
-    let kt = transpose(&k);
-
-    let mut scores = Tensor::matmul(&q, &kt);
-
-    // scale
-    let scale = (q.cols as f32).sqrt();
-    for s in &mut scores.data {
-        *s /= scale;
-    }
-
-    // causal mask
-    let mask = causal_mask(scores.rows);
-
-    for i in 0..scores.data.len() {
-        scores.data[i] += mask.data[i];
-    }
-
-    let probs = Tensor::softmax_tensor(&scores);
-
-    Tensor::matmul(&probs, &v)
-}
-
-}
-
-fn transpose(t: &Tensor) -> Tensor {
-
-    let mut result = Tensor::new(t.cols, t.rows);
-
-    for i in 0..t.rows {
-        for j in 0..t.cols {
-
-            result.data[j*t.rows + i] =
-                t.data[i*t.cols + j];
-
+            wq: Tensor::random(dim, head_dim),
+            wk: Tensor::random(dim, head_dim),
+            wv: Tensor::random(dim, head_dim),
+            head_dim,
         }
     }
 
-    result
+    /// x: (seq x dim) → output: (seq x head_dim)
+    pub fn forward(&self, x: &Tensor) -> Tensor {
+        let q = matmul(x, &self.wq); // (seq x head_dim)
+        let k = matmul(x, &self.wk); // (seq x head_dim)
+        let v = matmul(x, &self.wv); // (seq x head_dim)
 
+        let kt = k.transpose(); // (head_dim x seq)
+
+        let mut scores = matmul(&q, &kt); // (seq x seq)
+
+        let scale = (self.head_dim as f32).sqrt();
+        for s in &mut scores.data {
+            *s /= scale;
+        }
+
+        // causal mask
+        let mask = causal_mask(scores.rows);
+        for i in 0..scores.data.len() {
+            scores.data[i] += mask.data[i];
+        }
+
+        softmax_row(&mut scores.data, scores.rows, scores.cols);
+
+        matmul(&scores, &v) // (seq x head_dim)
+    }
 }

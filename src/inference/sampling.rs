@@ -29,6 +29,13 @@ pub fn top_k_sample(probs: &[f32], k: usize) -> usize {
     top[0].0
 }
 
+pub fn apply_temperature(logits: &mut Vec<f32>, temperature: f32) {
+
+    for v in logits.iter_mut() {
+        *v /= temperature;
+    }
+
+}
 
 /*
 

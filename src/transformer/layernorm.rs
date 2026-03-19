@@ -1,62 +1,52 @@
-
 use crate::tensor::tensor::Tensor;
 
 pub struct LayerNorm {
-
-    dim: usize,
-    eps: f32,
-
+    pub gamma: Vec<f32>,
+    pub beta: Vec<f32>,
+    pub dim: usize,
 }
 
 impl LayerNorm {
-
     pub fn new(dim: usize) -> Self {
-
         Self {
+            gamma: vec![1.0; dim],
+            beta: vec![0.0; dim],
             dim,
-            eps: 1e-5
         }
-
     }
 
-
+    /// x: (rows x dim) → (rows x dim) via layer normalization
     pub fn forward(&self, x: &Tensor) -> Tensor {
+        assert_eq!(x.cols, self.dim);
+        let mut out = x.clone();
 
-    assert_eq!(x.cols, self.dim);
+        for r in 0..x.rows {
+            let start = r * x.cols;
 
-    let mut out = x.clone();
+            // mean
+            let mut mean = 0.0;
+            for c in 0..x.cols {
+                mean += x.data[start + c];
+            }
+            mean /= x.cols as f32;
 
-    for i in 0..x.rows {
+            // variance
+            let mut var = 0.0;
+            for c in 0..x.cols {
+                let diff = x.data[start + c] - mean;
+                var += diff * diff;
+            }
+            var /= x.cols as f32;
 
-        let start = i * x.cols;
-        let end = start + x.cols;
+            let std = (var + 1e-5).sqrt();
 
-        let mut mean = 0.0;
-
-        for j in start..end {
-            mean += x.data[j];
+            // normalize + scale/shift
+            for c in 0..x.cols {
+                let idx = start + c;
+                out.data[idx] = (x.data[idx] - mean) / std * self.gamma[c] + self.beta[c];
+            }
         }
 
-        mean /= x.cols as f32;
-
-        let mut var = 0.0;
-
-        for j in start..end {
-            var += (x.data[j] - mean).powi(2);
-        }
-
-        var /= x.cols as f32;
-
-        let std = (var + self.eps).sqrt();
-
-        for j in start..end {
-            out.data[j] = (x.data[j] - mean) / std;
-        }
-
+        out
     }
-
-    out
 }
-
-}
-                

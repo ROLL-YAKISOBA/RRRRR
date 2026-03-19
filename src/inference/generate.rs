@@ -1,68 +1,48 @@
 use crate::gpt::model::GPT;
-use crate::inference::sampling::top_k_sample;
-use crate::tensor::tensor::softmax;
+use crate::tensor::softmax::softmax;
+use crate::inference::sample::sample;
+use crate::inference::topk::top_k;
 
-
+/// Autoregressive text generation
+/// tokens: 入力トークン列（インプレースで伸ばす）
+/// max_new_tokens: 生成するトークン数
+/// temperature: サンプリング温度（1.0=ニュートラル, <1でシャープ, >1でフラット）
+/// top_k_val: top-k サンプリング（0なら無効）
 pub fn generate(
     model: &GPT,
-    mut tokens: Vec<usize>,
-    steps: usize,
+    tokens: &mut Vec<usize>,
+    max_new_tokens: usize,
     temperature: f32,
-    top_k: usize
-) -> Vec<usize> {
+    top_k_val: usize,
+) {
+    for _step in 0..max_new_tokens {
+        let logits = model.forward(tokens);
 
-    for _ in 0..steps {
-
-        let logits = model.forward(&tokens);
-
-        let last = logits.rows - 1;
-
-        let start = last * logits.cols;
-
-        let mut row = logits.data[start..start+logits.cols].to_vec();
-
-        for v in &mut row {
-            *v /= temperature;
+        if logits.rows == 0 || logits.cols == 0 {
+            eprintln!("generate: logits empty");
+            break;
         }
 
-        let probs = softmax(&row);
+        // 最後の行のlogitsを取得
+        let start = (logits.rows - 1) * logits.cols;
+        let last_row = &logits.data[start..start + logits.cols];
 
-        let next = top_k_sample(&probs, top_k);
+        // temperature scaling
+        let mut probs_vec: Vec<f32> = last_row.to_vec();
+        if temperature != 1.0 {
+            for v in probs_vec.iter_mut() {
+                *v /= temperature;
+            }
+        }
 
-        tokens.push(next);
+        // top-k filtering
+        if top_k_val > 0 && top_k_val < probs_vec.len() {
+            top_k(&mut probs_vec, top_k_val);
+        }
 
-    }
-
-    tokens
-}
-
-/*   
-
-use crate::tensor::tensor::Tensor;
-use crate::inference::sample::sample;
-
-pub fn generate(model: &GPT, mut tokens: Vec<usize>, steps: usize) -> Vec<usize> {
-
-    for _ in 0..steps {
-
-        let logits = model.forward(&tokens);
-
-        let last_row = logits.rows - 1;
-
-        let start = last_row * logits.cols;
-        let end = start + logits.cols;
-
-        let probs = Tensor {
-            data: logits.data[start..end].to_vec(),
-            rows: 1,
-            cols: logits.cols
-        };
-
+        // softmax → sample
+        let probs = softmax(&probs_vec);
         let next = sample(&probs);
-
         tokens.push(next);
     }
-
-    tokens
 }
-*/

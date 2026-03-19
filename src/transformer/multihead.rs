@@ -1,40 +1,32 @@
-use crate::tensor::tensor::Tensor;
-use crate::transformer::attention::SelfAttention;
+use crate::tensor::tensor::{Tensor, matmul};
+use crate::transformer::attention::Attention;
 
+/// MultiHead Attention: n_heads 個のヘッドを並列実行し、concat → Wo
 pub struct MultiHeadAttention {
-
-    heads: Vec<SelfAttention>,
-    wo: Tensor,
-
+    pub heads: Vec<Attention>,
+    pub wo: Tensor, // (dim x dim) — concat結果(n_heads * head_dim = dim)からdimへ
 }
 
 impl MultiHeadAttention {
+    pub fn new(dim: usize, n_heads: usize) -> Self {
+        assert_eq!(dim % n_heads, 0, "dim must be divisible by n_heads");
+        let head_dim = dim / n_heads;
 
-     pub fn new(dim: usize, n_heads: usize) -> Self {
-
-        let mut heads = Vec::new();
-
+        let mut heads = Vec::with_capacity(n_heads);
         for _ in 0..n_heads {
-            heads.push(SelfAttention::new(dim));
+            heads.push(Attention::new(dim, head_dim));
         }
 
         Self {
             heads,
-            wo: Tensor::random(dim * n_heads, dim)
+            wo: Tensor::random(dim, dim), // concat output (dim) → dim
         }
     }
 
-
+    /// x: (seq x dim) → (seq x dim)
     pub fn forward(&self, x: &Tensor) -> Tensor {
-
-        let mut outputs = Vec::new();
-
-        for head in &self.heads {
-            outputs.push(head.forward(x));
-        }
-
-        let concat = Tensor::concat(&outputs);
-
-        Tensor::matmul(&concat, &self.wo)
+        let outputs: Vec<Tensor> = self.heads.iter().map(|h| h.forward(x)).collect();
+        let concat = Tensor::concat(&outputs); // (seq x dim)
+        matmul(&concat, &self.wo) // (seq x dim)
     }
 }
